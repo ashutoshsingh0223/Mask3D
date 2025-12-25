@@ -59,7 +59,57 @@ We adapt the codebase of [Mix3D](https://github.com/kumuji/mix3d) which provides
 └── saved                             <- folder that stores models and logs
 ```
 
-### Dependencies :memo:
+### Setup: Dependencies :memo:
+The main dependencies of the project are the following:
+```yaml
+python: 3.10.12
+cuda: 11.8
+```
+
+
+```
+sudo apt-get install libopenblas-dev
+export TORCH_CUDA_ARCH_LIST="6.0 6.1 6.2 7.0 7.2 7.5 8.0 8.6"
+export CUDA_HOME=/usr/local/cuda-11.8/
+export CUDA_NVCC_EXECUTABLE=/usr/local/cuda-11.8/bin/nvcc
+export CUDA_PATH=${CUDA_HOME}
+export CUDAToolkit_ROOT=${CUDA_HOME}
+export PATH=${CUDA_HOME}bin${PATH:+:${PATH}}
+export CPATH=${CUDA_HOME}include${CPATH:+:${CPATH}}
+export LD_LIBRARY_PATH=${CUDA_HOME}lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+
+
+python -m venv ./env
+source ./env/bin/activate
+
+pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 --index-url https://download.pytorch.org/whl/cu118
+pip install torch-scatter -f https://data.pyg.org/whl/torch-2.0.1+cu118.html
+pip install 'git+https://github.com/facebookresearch/detectron2.git@710e7795d0eeadf9def0e7ef957eea13532e34cf' --no-deps
+
+mkdir third_party
+cd third_party
+
+git clone --recursive "https://github.com/NVIDIA/MinkowskiEngine"
+cd MinkowskiEngine
+git checkout 02fc608bea4c0549b0a7b00ca1bf15dee4a0b228
+python setup.py install --force_cuda --blas=openblas
+
+cd ..
+git clone https://github.com/ScanNet/ScanNet.git
+cd ScanNet/Segmentator
+git checkout 3e5726500896748521a6ceb81271b0f5b2c0e7d2
+make
+
+cd ../../pointnet2
+python setup.py install
+
+cd ../../
+pip install pytorch-lightning==2.3.0
+```
+
+
+
+### Old-Setup: Dependencies :memo:
 The main dependencies of the project are the following:
 ```yaml
 python: 3.10.9
