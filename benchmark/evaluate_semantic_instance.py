@@ -362,6 +362,9 @@ def assign_instances_for_scan(pred: dict, gt_file: str):
         label_name = ID_TO_LABEL[label_id]
         # read the mask
         pred_mask = pred_info[uuid]["mask"]
+        # print("len pred mask:", len(pred_mask))
+        # print("len gt ids:", len(gt_ids))
+        # print("gt file:", gt_file)
         assert len(pred_mask) == len(gt_ids)
         # convert to binary
         pred_mask = np.not_equal(pred_mask, 0)
@@ -523,6 +526,24 @@ def evaluate(
             "clutter",
         ]
         VALID_CLASS_IDS = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
+        ID_TO_LABEL = {}
+        LABEL_TO_ID = {}
+        for i in range(len(VALID_CLASS_IDS)):
+            LABEL_TO_ID[CLASS_LABELS[i]] = VALID_CLASS_IDS[i]
+            ID_TO_LABEL[VALID_CLASS_IDS[i]] = CLASS_LABELS[i]
+
+    if dataset == "wheathead_iis":
+        # global CLASS_LABELS
+        # global VALID_CLASS_IDS
+        # global ID_TO_LABEL
+        # global LABEL_TO_ID
+
+        CLASS_LABELS = [
+            "stem",
+            "leaves",
+            "wheat-heads"
+        ]
+        VALID_CLASS_IDS = np.array([1, 2, 3])
         ID_TO_LABEL = {}
         LABEL_TO_ID = {}
         for i in range(len(VALID_CLASS_IDS)):

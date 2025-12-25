@@ -25,23 +25,25 @@ from datasets.scannet200.scannet200_constants import (
     SCANNET_COLOR_MAP_20,
 )
 
+from datasets.semseg import *
+
 logger = logging.getLogger(__name__)
 
 
-class SemanticSegmentationDataset(Dataset):
+class WheatheadIISDataset(Dataset):
     """Docstring for SemanticSegmentationDataset."""
 
     def __init__(
         self,
-        dataset_name="scannet",
-        data_dir: Optional[Union[str, Tuple[str]]] = "data/processed/scannet",
+        dataset_name="wheathead_iis",
+        data_dir: Optional[Union[str, Tuple[str]]] = "data/processed/wheathead_iis",
         label_db_filepath: Optional[
             str
-        ] = "configs/scannet_preprocessing/label_database.yaml",
+        ] = "data/processed/wheathead_iis/label_database.yaml",
         # mean std values from scannet
         color_mean_std: Optional[Union[str, Tuple[Tuple[float]]]] = (
-            (0.47793125906962, 0.4303257521323044, 0.3749598901421883),
-            (0.2834475483823543, 0.27566157565723015, 0.27018971370874995),
+            (0.5),
+            (0.5),
         ),
         mode: Optional[str] = "train",
         add_colors: Optional[bool] = True,
@@ -89,44 +91,11 @@ class SemanticSegmentationDataset(Dataset):
         self.is_elastic_distortion = is_elastic_distortion
         self.color_drop = color_drop
 
-        if self.dataset_name == "scannet":
-            self.color_map = SCANNET_COLOR_MAP_20
-            self.color_map[255] = (255, 255, 255)
-        elif self.dataset_name == "stpls3d":
+        if self.dataset_name == "wheathead_iis":
             self.color_map = {
-                0: [0, 255, 0],  # Ground
-                1: [0, 0, 255],  # Build
-                2: [0, 255, 255],  # LowVeg
-                3: [255, 255, 0],  # MediumVeg
-                4: [255, 0, 255],  # HiVeg
-                5: [100, 100, 255],  # Vehicle
-                6: [200, 200, 100],  # Truck
-                7: [170, 120, 200],  # Aircraft
-                8: [255, 0, 0],  # MilitaryVec
-                9: [200, 100, 100],  # Bike
-                10: [10, 200, 100],  # Motorcycle
-                11: [200, 200, 200],  # LightPole
-                12: [50, 50, 50],  # StreetSign
-                13: [60, 130, 60],  # Clutter
-                14: [130, 30, 60],
-            }  # Fence
-        elif self.dataset_name == "scannet200":
-            self.color_map = SCANNET_COLOR_MAP_200
-        elif self.dataset_name == "s3dis":
-            self.color_map = {
-                0: [0, 255, 0],  # ceiling
-                1: [0, 0, 255],  # floor
-                2: [0, 255, 255],  # wall
-                3: [255, 255, 0],  # beam
-                4: [255, 0, 255],  # column
-                5: [100, 100, 255],  # window
-                6: [200, 200, 100],  # door
-                7: [170, 120, 200],  # table
-                8: [255, 0, 0],  # chair
-                9: [200, 100, 100],  # sofa
-                10: [10, 200, 100],  # bookcase
-                11: [200, 200, 200],  # board
-                12: [50, 50, 50],  # clutter
+                0: [0, 255, 0],  # stem
+                1: [0, 0, 255],  # leaves
+                2: [0, 255, 255],  # wheat-heads
             }
         else:
             assert False, "dataset not known"
@@ -141,29 +110,29 @@ class SemanticSegmentationDataset(Dataset):
 
         self.reps_per_epoch = reps_per_epoch
 
-        self.cropping = cropping
-        self.cropping_args = cropping_args
+        # self.cropping = cropping
+        # self.cropping_args = cropping_args
         self.is_tta = is_tta
         self.on_crops = on_crops
 
-        self.crop_min_size = crop_min_size
-        self.crop_length = crop_length
+        # self.crop_min_size = crop_min_size
+        # self.crop_length = crop_length
 
-        self.version1 = cropping_v1
+        # self.version1 = cropping_v1
 
-        self.random_cuboid = RandomCuboid(
-            self.crop_min_size,
-            crop_length=self.crop_length,
-            version1=self.version1,
-        )
+        # self.random_cuboid = RandomCuboid(
+        #     self.crop_min_size,
+        #     crop_length=self.crop_length,
+        #     version1=self.version1,
+        # )
 
         self.mode = mode
         self.data_dir = data_dir
-        self.add_unlabeled_pc = add_unlabeled_pc
-        if add_unlabeled_pc:
-            self.other_database = self._load_yaml(
-                Path(data_dir).parent / "matterport" / "train_database.yaml"
-            )
+        # self.add_unlabeled_pc = add_unlabeled_pc
+        # if add_unlabeled_pc:
+        #     self.other_database = self._load_yaml(
+        #         Path(data_dir).parent / "matterport" / "train_database.yaml"
+        #     )
         if type(data_dir) == str:
             self.data_dir = [self.data_dir]
         self.ignore_label = ignore_label
@@ -172,8 +141,8 @@ class SemanticSegmentationDataset(Dataset):
         self.add_instance = add_instance
         self.add_raw_coordinates = add_raw_coordinates
         self.instance_oversampling = instance_oversampling
-        self.place_around_existing = place_around_existing
-        self.max_cut_region = max_cut_region
+        # self.place_around_existing = place_around_existing
+        # self.max_cut_region = max_cut_region
         self.point_per_cut = point_per_cut
         self.flip_in_center = flip_in_center
         self.noise_rate = noise_rate
@@ -183,17 +152,8 @@ class SemanticSegmentationDataset(Dataset):
         self._data = []
         for database_path in self.data_dir:
             database_path = Path(database_path)
-            if self.dataset_name != "s3dis":
-                if not (database_path / f"{mode}_database.yaml").exists():
-                    print(
-                        f"generate {database_path}/{mode}_database.yaml first"
-                    )
-                    exit()
-                self._data.extend(
-                    self._load_yaml(database_path / f"{mode}_database.yaml")
-                )
-            else:
-                mode_s3dis = f"Area_{self.area}"
+            if self.dataset_name == "wheathead_iis":
+                mode_s3dis = str(self.area)
                 if self.mode == "train":
                     mode_s3dis = "train_" + mode_s3dis
                 if not (
@@ -222,24 +182,25 @@ class SemanticSegmentationDataset(Dataset):
                 Path(label_db_filepath).parent / "instance_database.yaml"
             )
 
+        # NOTE: No need to change mean and std for wheathead_iis since it has only intensity.
         # normalize color channels
-        if self.dataset_name == "s3dis":
-            color_mean_std = color_mean_std.replace(
-                "color_mean_std.yaml", f"Area_{self.area}_color_mean_std.yaml"
-            )
+        # if self.dataset_name == "s3dis":
+        #     color_mean_std = color_mean_std.replace(
+        #         "color_mean_std.yaml", f"Area_{self.area}_color_mean_std.yaml"
+        #     )
 
-        if Path(str(color_mean_std)).exists():
-            color_mean_std = self._load_yaml(color_mean_std)
-            color_mean, color_std = (
-                tuple(color_mean_std["mean"]),
-                tuple(color_mean_std["std"]),
-            )
-        elif len(color_mean_std[0]) == 3 and len(color_mean_std[1]) == 3:
-            color_mean, color_std = color_mean_std[0], color_mean_std[1]
-        else:
-            logger.error(
-                "pass mean and std as tuple of tuples, or as an .yaml file"
-            )
+        # if Path(str(color_mean_std)).exists():
+        #     color_mean_std = self._load_yaml(color_mean_std)
+        #     color_mean, color_std = (
+        #         tuple(color_mean_std["mean"]),
+        #         tuple(color_mean_std["std"]),
+        #     )
+        # elif len(color_mean_std[0]) == 3 and len(color_mean_std[1]) == 3:
+        #     color_mean, color_std = color_mean_std[0], color_mean_std[1]
+        # else:
+        #     logger.error(
+        #         "pass mean and std as tuple of tuples, or as an .yaml file"
+        #     )
 
         # augmentations
         self.volume_augmentations = V.NoOp()
@@ -249,16 +210,19 @@ class SemanticSegmentationDataset(Dataset):
             self.volume_augmentations = V.load(
                 Path(volume_augmentations_path), data_format="yaml"
             )
-        self.image_augmentations = A.NoOp()
-        if (image_augmentations_path is not None) and (
-            image_augmentations_path != "none"
-        ):
-            self.image_augmentations = A.load(
-                Path(image_augmentations_path), data_format="yaml"
-            )
+
+        # NOTE: No need to change mean and std for wheathead_iis since it has only intensity.
+        # self.image_augmentations = A.NoOp()
+        # if (image_augmentations_path is not None) and (
+        #     image_augmentations_path != "none"
+        # ):
+        #     self.image_augmentations = A.load(
+        #         Path(image_augmentations_path), data_format="yaml"
+        #     )
         # mandatory color augmentation
-        if add_colors:
-            self.normalize_color = A.Normalize(mean=color_mean, std=color_std)
+
+        # if add_colors:
+        #     self.normalize_color = A.Normalize(mean=color_mean, std=color_std)
 
         self.cache_data = cache_data
         # new_data = []
@@ -399,7 +363,7 @@ class SemanticSegmentationDataset(Dataset):
             return self.reps_per_epoch * len(self.data)
 
     def __getitem__(self, idx: int):
-        idx = idx % len(self.data)
+        # idx = idx % len(self.data)
         if self.is_tta:
             idx = idx % len(self.data)
 
@@ -409,16 +373,16 @@ class SemanticSegmentationDataset(Dataset):
             assert not self.on_crops, "you need caching if on crops"
             points = np.load(self.data[idx]["filepath"].replace("../../", ""))
 
-        if "train" in self.mode and self.dataset_name in ["s3dis", "stpls3d"]:
-            inds = self.random_cuboid(points)
-            points = points[inds]
+        # if "train" in self.mode and self.dataset_name in ["s3dis", "stpls3d"]:
+        #     inds = self.random_cuboid(points)
+        #     points = points[inds]
 
         coordinates, color, normals, segments, labels = (
             points[:, :3],
-            points[:, 3:6],
-            points[:, 6:9],
-            points[:, 9],
-            points[:, 10:12],
+            points[:, 3:4],
+            points[:, 4:7],
+            points[:, 7],
+            points[:, 8:],
         )
 
         raw_coordinates = coordinates.copy()
@@ -426,26 +390,10 @@ class SemanticSegmentationDataset(Dataset):
         raw_normals = normals
 
         if not self.add_colors:
-            color = np.ones((len(color), 3))
+            color = np.ones((len(color), 1))
 
         # volume and image augmentations for train
         if "train" in self.mode or self.is_tta:
-            if self.cropping:
-                new_idx = self.random_cuboid(
-                    coordinates,
-                    labels[:, 1],
-                    self._remap_from_zero(labels[:, 0].copy()),
-                )
-
-                coordinates = coordinates[new_idx]
-                color = color[new_idx]
-                labels = labels[new_idx]
-                segments = segments[new_idx]
-                raw_color = raw_color[new_idx]
-                raw_normals = raw_normals[new_idx]
-                normals = normals[new_idx]
-                points = points[new_idx]
-
             coordinates -= coordinates.mean(0)
 
             try:
@@ -498,32 +446,32 @@ class SemanticSegmentationDataset(Dataset):
                 aug["normals"],
                 aug["labels"],
             )
-            pseudo_image = color.astype(np.uint8)[np.newaxis, :, :]
-            color = np.squeeze(
-                self.image_augmentations(image=pseudo_image)["image"]
-            )
+            # pseudo_image = color.astype(np.uint8)[np.newaxis, :, :]
+            # color = np.squeeze(
+            #     self.image_augmentations(image=pseudo_image)["image"]
+            # )
 
-            if self.point_per_cut != 0:
-                number_of_cuts = int(len(coordinates) / self.point_per_cut)
-                for _ in range(number_of_cuts):
-                    size_of_cut = np.random.uniform(0.05, self.max_cut_region)
-                    # not wall, floor or empty
-                    point = choice(coordinates)
-                    x_min = point[0] - size_of_cut
-                    x_max = x_min + size_of_cut
-                    y_min = point[1] - size_of_cut
-                    y_max = y_min + size_of_cut
-                    z_min = point[2] - size_of_cut
-                    z_max = z_min + size_of_cut
-                    indexes = crop(
-                        coordinates, x_min, y_min, z_min, x_max, y_max, z_max
-                    )
-                    coordinates, normals, color, labels = (
-                        coordinates[~indexes],
-                        normals[~indexes],
-                        color[~indexes],
-                        labels[~indexes],
-                    )
+            # if self.point_per_cut != 0:
+            #     number_of_cuts = int(len(coordinates) / self.point_per_cut)
+            #     for _ in range(number_of_cuts):
+            #         size_of_cut = np.random.uniform(0.05, self.max_cut_region)
+            #         # not wall, floor or empty
+            #         point = choice(coordinates)
+            #         x_min = point[0] - size_of_cut
+            #         x_max = x_min + size_of_cut
+            #         y_min = point[1] - size_of_cut
+            #         y_max = y_min + size_of_cut
+            #         z_min = point[2] - size_of_cut
+            #         z_max = z_min + size_of_cut
+            #         indexes = crop(
+            #             coordinates, x_min, y_min, z_min, x_max, y_max, z_max
+            #         )
+            #         coordinates, normals, color, labels = (
+            #             coordinates[~indexes],
+            #             normals[~indexes],
+            #             color[~indexes],
+            #             labels[~indexes],
+            #         )
 
             # if self.noise_rate > 0:
             #     coordinates, color, normals, labels = random_points(
@@ -546,74 +494,77 @@ class SemanticSegmentationDataset(Dataset):
                     self.ignore_label,
                 )
 
-            if self.add_unlabeled_pc:
-                if random() < 0.8:
-                    new_points = np.load(
-                        self.other_database[
-                            np.random.randint(0, len(self.other_database) - 1)
-                        ]["filepath"]
-                    )
-                    (
-                        unlabeled_coords,
-                        unlabeled_color,
-                        unlabeled_normals,
-                        unlabeled_labels,
-                    ) = (
-                        new_points[:, :3],
-                        new_points[:, 3:6],
-                        new_points[:, 6:9],
-                        new_points[:, 9:],
-                    )
-                    unlabeled_coords -= unlabeled_coords.mean(0)
-                    unlabeled_coords += (
-                        np.random.uniform(
-                            unlabeled_coords.min(0), unlabeled_coords.max(0)
-                        )
-                        / 2
-                    )
+            # if self.add_unlabeled_pc:
+            #     if random() < 0.8:
+            #         new_points = np.load(
+            #             self.other_database[
+            #                 np.random.randint(0, len(self.other_database) - 1)
+            #             ]["filepath"]
+            #         )
+            #         (
+            #             unlabeled_coords,
+            #             unlabeled_color,
+            #             unlabeled_normals,
+            #             unlabeled_labels,
+            #         ) = (
+            #             new_points[:, :3],
+            #             new_points[:, 3:6],
+            #             new_points[:, 6:9],
+            #             new_points[:, 9:],
+            #         )
+            #         unlabeled_coords -= unlabeled_coords.mean(0)
+            #         unlabeled_coords += (
+            #             np.random.uniform(
+            #                 unlabeled_coords.min(0), unlabeled_coords.max(0)
+            #             )
+            #             / 2
+            #         )
 
-                    aug = self.volume_augmentations(
-                        points=unlabeled_coords,
-                        normals=unlabeled_normals,
-                        features=unlabeled_color,
-                        labels=unlabeled_labels,
-                    )
-                    (
-                        unlabeled_coords,
-                        unlabeled_color,
-                        unlabeled_normals,
-                        unlabeled_labels,
-                    ) = (
-                        aug["points"],
-                        aug["features"],
-                        aug["normals"],
-                        aug["labels"],
-                    )
-                    pseudo_image = unlabeled_color.astype(np.uint8)[
-                        np.newaxis, :, :
-                    ]
-                    unlabeled_color = np.squeeze(
-                        self.image_augmentations(image=pseudo_image)["image"]
-                    )
+            #         aug = self.volume_augmentations(
+            #             points=unlabeled_coords,
+            #             normals=unlabeled_normals,
+            #             features=unlabeled_color,
+            #             labels=unlabeled_labels,
+            #         )
+            #         (
+            #             unlabeled_coords,
+            #             unlabeled_color,
+            #             unlabeled_normals,
+            #             unlabeled_labels,
+            #         ) = (
+            #             aug["points"],
+            #             aug["features"],
+            #             aug["normals"],
+            #             aug["labels"],
+            #         )
+            #         pseudo_image = unlabeled_color.astype(np.uint8)[
+            #             np.newaxis, :, :
+            #         ]
+            #         unlabeled_color = np.squeeze(
+            #             self.image_augmentations(image=pseudo_image)["image"]
+            #         )
 
-                    coordinates = np.concatenate(
-                        (coordinates, unlabeled_coords)
-                    )
-                    color = np.concatenate((color, unlabeled_color))
-                    normals = np.concatenate((normals, unlabeled_normals))
-                    labels = np.concatenate(
-                        (
-                            labels,
-                            np.full_like(unlabeled_labels, self.ignore_label),
-                        )
-                    )
+            #         coordinates = np.concatenate(
+            #             (coordinates, unlabeled_coords)
+            #         )
+            #         color = np.concatenate((color, unlabeled_color))
+            #         normals = np.concatenate((normals, unlabeled_normals))
+            #         labels = np.concatenate(
+            #             (
+            #                 labels,
+            #                 np.full_like(unlabeled_labels, self.ignore_label),
+            #             )
+            #         )
 
-            if random() < self.color_drop:
-                color[:] = 255
+            # if random() < self.color_drop:
+            #     color[:] = 255
 
         # normalize color information
-        pseudo_image = color.astype(np.uint8)[np.newaxis, :, :]
-        color = np.squeeze(self.normalize_color(image=pseudo_image)["image"])
+        # pseudo_image = color.astype(np.uint8)[np.newaxis, :, :]
+        # color = np.squeeze(self.normalize_color(image=pseudo_image)["image"])
+
+        # NOTE: For wheathead_iis, color is single channel intensity normalized between 0-1
+        color = (color.astype(np.float32) - 0.5) / 0.5
 
         # prepare labels and map from 0 to 20(40)
         labels = labels.astype(np.int32)
@@ -635,53 +586,34 @@ class SemanticSegmentationDataset(Dataset):
                 features = np.hstack((features, coordinates))
 
         # if self.task != "semantic_segmentation":
-        if self.data[idx]["raw_filepath"].split("/")[-2] in [
-            "scene0636_00",
-            "scene0154_00",
-        ]:
-            return self.__getitem__(0)
+        # if self.data[idx]["raw_filepath"].split("/")[-2] in [
+        #     "scene0636_00",
+        #     "scene0154_00",
+        # ]:
+        #     return self.__getitem__(0)
 
-        if self.dataset_name == "s3dis":
+        if self.dataset_name == "wheathead_iis":
+
+            # print("getting item:", idx)
             return (
                 coordinates,
                 features,
                 labels,
-                self.data[idx]["area"] + "_" + self.data[idx]["scene"],
-                raw_color,
-                raw_normals,
-                raw_coordinates,
-                idx,
-            )
-        if self.dataset_name == "stpls3d":
-            if labels.shape[1] != 1:  # only segments --> test set!
-                if np.unique(labels[:, -2]).shape[0] < 2:
-                    print("NO INSTANCES")
-                    return self.__getitem__(0)
-            return (
-                coordinates,
-                features,
-                labels,
-                self.data[idx]["scene"],
+                self.data[idx]["area"] + "_" + self.data[idx]["scene"].replace("_point.npy", ""),
+                # self.data[idx]["area"] + "_" + self.data[idx]["scene"],
                 raw_color,
                 raw_normals,
                 raw_coordinates,
                 idx,
             )
         else:
-            return (
-                coordinates,
-                features,
-                labels,
-                self.data[idx]["raw_filepath"].split("/")[-2],
-                raw_color,
-                raw_normals,
-                raw_coordinates,
-                idx,
-            )
+            raise NotImplementedError(f"Dataset {self.dataset_name} not supported")
 
     @property
     def data(self):
         """database file containing information about preproscessed dataset"""
+        if self.mode == "train":
+            return self._data * 5
         return self._data
 
     @property
@@ -788,204 +720,6 @@ class SemanticSegmentationDataset(Dataset):
         return coordinates, color, normals, labels
 
 
-def elastic_distortion(pointcloud, granularity, magnitude):
-    """Apply elastic distortion on sparse coordinate space.
-
-    pointcloud: numpy array of (number of points, at least 3 spatial dims)
-    granularity: size of the noise grid (in same scale[m/cm] as the voxel grid)
-    magnitude: noise multiplier
-    """
-    blurx = np.ones((3, 1, 1, 1)).astype("float32") / 3
-    blury = np.ones((1, 3, 1, 1)).astype("float32") / 3
-    blurz = np.ones((1, 1, 3, 1)).astype("float32") / 3
-    coords = pointcloud[:, :3]
-    coords_min = coords.min(0)
-
-    # Create Gaussian noise tensor of the size given by granularity.
-    noise_dim = ((coords - coords_min).max(0) // granularity).astype(int) + 3
-    noise = np.random.randn(*noise_dim, 3).astype(np.float32)
-
-    # Smoothing.
-    for _ in range(2):
-        noise = scipy.ndimage.filters.convolve(
-            noise, blurx, mode="constant", cval=0
-        )
-        noise = scipy.ndimage.filters.convolve(
-            noise, blury, mode="constant", cval=0
-        )
-        noise = scipy.ndimage.filters.convolve(
-            noise, blurz, mode="constant", cval=0
-        )
-
-    # Trilinear interpolate noise filters for each spatial dimensions.
-    ax = [
-        np.linspace(d_min, d_max, d)
-        for d_min, d_max, d in zip(
-            coords_min - granularity,
-            coords_min + granularity * (noise_dim - 2),
-            noise_dim,
-        )
-    ]
-    interp = scipy.interpolate.RegularGridInterpolator(
-        ax, noise, bounds_error=0, fill_value=0
-    )
-    pointcloud[:, :3] = coords + interp(coords) * magnitude
-    return pointcloud
 
 
-def crop(points, x_min, y_min, z_min, x_max, y_max, z_max):
-    if x_max <= x_min or y_max <= y_min or z_max <= z_min:
-        raise ValueError(
-            "We should have x_min < x_max and y_min < y_max and z_min < z_max. But we got"
-            " (x_min = {x_min}, y_min = {y_min}, z_min = {z_min},"
-            " x_max = {x_max}, y_max = {y_max}, z_max = {z_max})".format(
-                x_min=x_min,
-                x_max=x_max,
-                y_min=y_min,
-                y_max=y_max,
-                z_min=z_min,
-                z_max=z_max,
-            )
-        )
-    inds = np.all(
-        [
-            (points[:, 0] >= x_min),
-            (points[:, 0] < x_max),
-            (points[:, 1] >= y_min),
-            (points[:, 1] < y_max),
-            (points[:, 2] >= z_min),
-            (points[:, 2] < z_max),
-        ],
-        axis=0,
-    )
-    return inds
 
-
-def flip_in_center(coordinates):
-    # moving coordinates to center
-    coordinates -= coordinates.mean(0)
-    aug = V.Compose(
-        [
-            V.Flip3d(axis=(0, 1, 0), always_apply=True),
-            V.Flip3d(axis=(1, 0, 0), always_apply=True),
-        ]
-    )
-
-    first_crop = coordinates[:, 0] > 0
-    first_crop &= coordinates[:, 1] > 0
-    # x -y
-    second_crop = coordinates[:, 0] > 0
-    second_crop &= coordinates[:, 1] < 0
-    # -x y
-    third_crop = coordinates[:, 0] < 0
-    third_crop &= coordinates[:, 1] > 0
-    # -x -y
-    fourth_crop = coordinates[:, 0] < 0
-    fourth_crop &= coordinates[:, 1] < 0
-
-    if first_crop.size > 1:
-        coordinates[first_crop] = aug(points=coordinates[first_crop])["points"]
-    if second_crop.size > 1:
-        minimum = coordinates[second_crop].min(0)
-        minimum[2] = 0
-        minimum[0] = 0
-        coordinates[second_crop] = aug(points=coordinates[second_crop])[
-            "points"
-        ]
-        coordinates[second_crop] += minimum
-    if third_crop.size > 1:
-        minimum = coordinates[third_crop].min(0)
-        minimum[2] = 0
-        minimum[1] = 0
-        coordinates[third_crop] = aug(points=coordinates[third_crop])["points"]
-        coordinates[third_crop] += minimum
-    if fourth_crop.size > 1:
-        minimum = coordinates[fourth_crop].min(0)
-        minimum[2] = 0
-        coordinates[fourth_crop] = aug(points=coordinates[fourth_crop])[
-            "points"
-        ]
-        coordinates[fourth_crop] += minimum
-
-    return coordinates
-
-
-def random_around_points(
-    coordinates,
-    color,
-    normals,
-    labels,
-    rate=0.2,
-    noise_rate=0,
-    ignore_label=255,
-):
-    coord_indexes = sample(
-        list(range(len(coordinates))), k=int(len(coordinates) * rate)
-    )
-    noisy_coordinates = deepcopy(coordinates[coord_indexes])
-    noisy_coordinates += np.random.uniform(
-        -0.2 - noise_rate, 0.2 + noise_rate, size=noisy_coordinates.shape
-    )
-
-    if noise_rate > 0:
-        noisy_color = np.random.randint(0, 255, size=noisy_coordinates.shape)
-        noisy_normals = np.random.rand(*noisy_coordinates.shape) * 2 - 1
-        noisy_labels = np.full(labels[coord_indexes].shape, ignore_label)
-
-        coordinates = np.vstack((coordinates, noisy_coordinates))
-        color = np.vstack((color, noisy_color))
-        normals = np.vstack((normals, noisy_normals))
-        labels = np.vstack((labels, noisy_labels))
-    else:
-        noisy_color = deepcopy(color[coord_indexes])
-        noisy_normals = deepcopy(normals[coord_indexes])
-        noisy_labels = deepcopy(labels[coord_indexes])
-
-        coordinates = np.vstack((coordinates, noisy_coordinates))
-        color = np.vstack((color, noisy_color))
-        normals = np.vstack((normals, noisy_normals))
-        labels = np.vstack((labels, noisy_labels))
-
-    return coordinates, color, normals, labels
-
-
-def random_points(
-    coordinates, color, normals, labels, noise_rate=0.6, ignore_label=255
-):
-    max_boundary = coordinates.max(0) + 0.1
-    min_boundary = coordinates.min(0) - 0.1
-
-    noisy_coordinates = int(
-        (max(max_boundary) - min(min_boundary)) / noise_rate
-    )
-
-    noisy_coordinates = np.array(
-        list(
-            product(
-                np.linspace(
-                    min_boundary[0], max_boundary[0], noisy_coordinates
-                ),
-                np.linspace(
-                    min_boundary[1], max_boundary[1], noisy_coordinates
-                ),
-                np.linspace(
-                    min_boundary[2], max_boundary[2], noisy_coordinates
-                ),
-            )
-        )
-    )
-    noisy_coordinates += np.random.uniform(
-        -noise_rate, noise_rate, size=noisy_coordinates.shape
-    )
-
-    noisy_color = np.random.randint(0, 255, size=noisy_coordinates.shape)
-    noisy_normals = np.random.rand(*noisy_coordinates.shape) * 2 - 1
-    noisy_labels = np.full(
-        (noisy_coordinates.shape[0], labels.shape[1]), ignore_label
-    )
-
-    coordinates = np.vstack((coordinates, noisy_coordinates))
-    color = np.vstack((color, noisy_color))
-    normals = np.vstack((normals, noisy_normals))
-    labels = np.vstack((labels, noisy_labels))
-    return coordinates, color, normals, labels

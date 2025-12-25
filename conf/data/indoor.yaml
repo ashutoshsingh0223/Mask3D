@@ -13,21 +13,24 @@ ignore_label: 255
 add_raw_coordinates: true # 3dim
 add_colors: true # 3dim
 add_normals: false # 3dim
-in_channels: 3 # in_channels = 3 * (add_normals + add_colors + add_raw_coordinates)
-num_labels: 20
+# in_channels: 3 # in_channels = 3 * (add_normals + add_colors + add_raw_coordinates)
+in_channels: 1
+# num_labels: 20
+num_labels: 3
 # num_labels: 41
 add_instance: ${general.add_instance}
 task: ${general.task}
 
 # data loader
-pin_memory: false
+pin_memory: False
 num_workers: 4
-batch_size: 5
+batch_size: 4
 test_batch_size: 1
 cache_data: false
 
 # collation
-voxel_size: 0.02
+# voxel_size: 0.02
+voxel_size: 0.002 # wheathead_iis has coordinates in mm
 
 reps_per_epoch: ${general.reps_per_epoch}
 

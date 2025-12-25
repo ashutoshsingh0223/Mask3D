@@ -2,6 +2,9 @@
 deterministic: false
 max_epochs: 1000
 min_epochs: 1
-resume_from_checkpoint: null
-check_val_every_n_epoch: 50
-num_sanity_val_steps: -1
+# resume_from_checkpoint: null
+ckpt_path: null
+# check_val_every_n_epoch: 50
+# val_every_n_epoch: 2
+val_check_interval: 50
+num_sanity_val_steps: 0

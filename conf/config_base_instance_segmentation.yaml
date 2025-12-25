@@ -15,7 +15,7 @@ general:
   export: false
   use_dbscan: false
   ignore_class_threshold: 100
-  project_name: scannet
+  project_name: whe
   workspace: jonasschult
   experiment_name: DEBUG_ABLATION
   num_targets: 19
@@ -33,7 +33,8 @@ general:
   scores_threshold: 0.0
   iou_threshold: 1.0
 
-  area: 5
+  # area: 5
+  area: '12'
 
   eval_inner_core: -1 # disabled
 
@@ -46,17 +47,17 @@ general:
   save_dir: saved/${general.experiment_name}
   # time/commit/md5(config)_uuid
   # time/experiment_id/version_uuid
-  # experiment_id: 1 # commit[:8], or unique from logger
-  # version: 1 # md5[:8] of config
+  experiment_id: 4 # commit[:8], or unique from logger
+  version: 2 # md5[:8] of config
 
   gpus: 1
 
 defaults:
   - data: indoor
   - data/data_loaders: simple_loader
-  - data/datasets: scannet
+  - data/datasets: wheathead_iis
   - data/collation_functions: voxelize_collate
-  - logging: full
+  - logging: minimal
   - model: mask3d
   - metrics: miou
   - optimizer: adamw

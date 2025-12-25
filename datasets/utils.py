@@ -45,6 +45,8 @@ class VoxelizeCollate:
             batch = make_crops(batch)
         if ("train" in self.mode) and self.very_small_crops:
             batch = make_crops(batch)
+
+        # print("Batch size before batching instances:", len(batch))
         return voxelize(
             batch,
             self.ignore_label,
@@ -291,6 +293,8 @@ def voxelize(
         if len(sample[2]) > 0:
             sample_labels = sample[2][unique_map]
             labels.append(torch.from_numpy(sample_labels).long())
+    
+    # print("Voxelization done")
 
     # Concatenate all lists
     input_dict = {"coords": coordinates, "feats": features}
@@ -392,12 +396,14 @@ def voxelize(
                         target_full[i]["point2segment"] = torch.from_numpy(
                             original_labels[i][:, 2]
                         ).long()
+            # print("Instance masks generated")
     else:
         target = []
         target_full = []
         coordinates = []
         features = []
 
+    # print("Finished voxelize function")
     if "train" not in mode:
         return (
             NoGpu(
@@ -427,7 +433,7 @@ def voxelize(
             target,
             [sample[3] for sample in batch],
         )
-
+    
 
 def get_instance_masks(
     list_labels,

@@ -37,10 +37,13 @@ def get_parameters(cfg: DictConfig):
 
     if not os.path.exists(cfg.general.save_dir):
         os.makedirs(cfg.general.save_dir)
+        ckpt_path = None
     else:
         print("EXPERIMENT ALREADY EXIST")
+        ckpt_path = f"{cfg.general.save_dir}/last-epoch.ckpt"
+
         cfg["trainer"][
-            "resume_from_checkpoint"
+            "ckpt_path"
         ] = f"{cfg.general.save_dir}/last-epoch.ckpt"
 
     for log in cfg.logging:
@@ -59,7 +62,9 @@ def get_parameters(cfg: DictConfig):
         cfg, model = load_checkpoint_with_missing_or_exsessive_keys(cfg, model)
 
     logger.info(flatten_dict(OmegaConf.to_container(cfg, resolve=True)))
-    return cfg, model, loggers
+
+    print("Model created")
+    return cfg, model, loggers, ckpt_path
 
 
 @hydra.main(
@@ -67,21 +72,31 @@ def get_parameters(cfg: DictConfig):
 )
 def train(cfg: DictConfig):
     os.chdir(hydra.utils.get_original_cwd())
-    cfg, model, loggers = get_parameters(cfg)
+    cfg, model, loggers, ckpt_path = get_parameters(cfg)
     callbacks = []
     for cb in cfg.callbacks:
         callbacks.append(hydra.utils.instantiate(cb))
 
     callbacks.append(RegularCheckpointing())
 
+    # runner = Trainer(
+    #     logger=loggers,
+    #     devices=cfg.general.gpus,
+    #     callbacks=callbacks,
+    #     weights_save_path=str(cfg.general.save_dir),
+    #     **cfg.trainer,
+    # )
+
+    cfg.trainer.__delattr__("ckpt_path")
     runner = Trainer(
         logger=loggers,
-        gpus=cfg.general.gpus,
+        log_every_n_steps=34,
+        devices=cfg.general.gpus,
         callbacks=callbacks,
-        weights_save_path=str(cfg.general.save_dir),
+        default_root_dir=str(cfg.general.save_dir),  # Changed from weights_save_path
         **cfg.trainer,
     )
-    runner.fit(model)
+    runner.fit(model, ckpt_path=ckpt_path)
 
 
 @hydra.main(
@@ -91,10 +106,19 @@ def test(cfg: DictConfig):
     # because hydra wants to change dir for some reason
     os.chdir(hydra.utils.get_original_cwd())
     cfg, model, loggers = get_parameters(cfg)
+    # runner = Trainer(
+    #     devices=cfg.general.gpus,
+    #     logger=loggers,
+    #     weights_save_path=str(cfg.general.save_dir),
+    #     **cfg.trainer,
+    # )
+
     runner = Trainer(
-        gpus=cfg.general.gpus,
         logger=loggers,
-        weights_save_path=str(cfg.general.save_dir),
+        log_every_n_steps=3,
+        devices=cfg.general.gpus,
+        callbacks=callbacks,
+        default_root_dir=str(cfg.general.save_dir),  # Changed from weights_save_path
         **cfg.trainer,
     )
     runner.test(model)

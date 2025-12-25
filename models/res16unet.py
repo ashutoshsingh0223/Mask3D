@@ -1,9 +1,17 @@
 import MinkowskiEngine.MinkowskiOps as me
 from MinkowskiEngine import MinkowskiReLU
+from dataclasses import dataclass, field
 
 from models.resnet import ResNetBase, get_norm
 from models.modules.common import ConvType, NormType, conv, conv_tr
 from models.modules.resnet_block import BasicBlock, Bottleneck
+
+
+# @dataclass
+# class Res16UNetConfig:
+#     dilations: list = field(default_factory=lambda: [1, 1, 1, 1])
+#     conv1_kernel_size: int = 5
+#     bn_momentum: float = 0.02
 
 
 class Res16UNetBase(ResNetBase):

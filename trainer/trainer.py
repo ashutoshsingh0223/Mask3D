@@ -112,6 +112,8 @@ class InstanceSegmentation(pl.LightningModule):
         self.iou = IoU()
         # misc
         self.labels_info = dict()
+        self.validation_outputs = []
+        self.training_outputs = []
 
     def forward(
         self, x, point2segment=None, raw_coordinates=None, is_eval=False
@@ -127,6 +129,8 @@ class InstanceSegmentation(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         data, target, file_names = batch
+
+        # print("batch idx----------------------------", batch_idx)
 
         if data.features.shape[0] > self.config.general.max_batch_size:
             print("data exceeds threshold")
@@ -201,10 +205,15 @@ class InstanceSegmentation(pl.LightningModule):
         )
 
         self.log_dict(logs)
-        return sum(losses.values())
+        loss = sum(losses.values())
+        # self.training_outputs.append(loss)
+        return loss
 
     def validation_step(self, batch, batch_idx):
-        return self.eval_step(batch, batch_idx)
+        # print("val batch idx----------------------------", batch_idx)
+        result = self.eval_step(batch, batch_idx)
+        self.validation_outputs.append(result)
+        return result
 
     def export(self, pred_masks, scores, pred_classes, file_names, decoder_id):
         root_path = f"eval_output"
@@ -233,15 +242,19 @@ class InstanceSegmentation(pl.LightningModule):
                         f"pred_mask/{file_name}_{real_id}.txt {pred_class} {score}\n"
                     )
 
-    def training_epoch_end(self, outputs):
-        train_loss = sum([out["loss"].cpu().item() for out in outputs]) / len(
-            outputs
-        )
-        results = {"train_loss_mean": train_loss}
-        self.log_dict(results)
+    def on_train_epoch_end(self):
+        pass
+        # if self.training_outputs:
+        #     train_loss = sum([out.cpu().item() for out in self.training_outputs]) / len(
+        #         self.training_outputs
+        #     )
+        #     results = {"train_loss_mean": train_loss}
+        #     self.log_dict(results)
+        # self.training_outputs = []
 
-    def validation_epoch_end(self, outputs):
-        self.test_epoch_end(outputs)
+    def on_validation_epoch_end(self):
+        self.test_epoch_end(self.validation_outputs)
+        self.validation_outputs = []
 
     def save_visualizations(
         self,
@@ -1028,6 +1041,10 @@ class InstanceSegmentation(pl.LightningModule):
             "scannet200",
         ]:
             gt_data_path = f"{self.validation_dataset.data_dir[0]}/instance_gt/{self.validation_dataset.mode}"
+
+        elif self.validation_dataset.dataset_name == "wheathead_iis":
+            gt_data_path = f"{self.validation_dataset.data_dir[0]}/instance_gt/{self.config.general.area}"
+
         else:
             gt_data_path = f"{self.validation_dataset.data_dir[0]}/instance_gt/Area_{self.config.general.area}"
 
@@ -1044,6 +1061,23 @@ class InstanceSegmentation(pl.LightningModule):
                 for key in self.preds.keys():
                     new_preds[
                         key.replace(f"Area_{self.config.general.area}_", "")
+                    ] = {
+                        "pred_classes": self.preds[key]["pred_classes"] + 1,
+                        "pred_masks": self.preds[key]["pred_masks"],
+                        "pred_scores": self.preds[key]["pred_scores"],
+                    }
+                mprec, mrec = evaluate(
+                    new_preds, gt_data_path, pred_path, dataset="s3dis"
+                )
+                ap_results[f"{log_prefix}_mean_precision"] = mprec
+                ap_results[f"{log_prefix}_mean_recall"] = mrec
+
+            elif self.validation_dataset.dataset_name == "wheathead_iis":
+                new_preds = {}
+                for key in self.preds.keys():
+                    # print(key)
+                    new_preds[
+                        key.replace(f"{self.config.general.area}_", "")
                     ] = {
                         "pred_classes": self.preds[key]["pred_classes"] + 1,
                         "pred_masks": self.preds[key]["pred_masks"],
@@ -1251,6 +1285,7 @@ class InstanceSegmentation(pl.LightningModule):
         self.log_dict(dd)
 
     def configure_optimizers(self):
+        # print("Configuring optimizers and schedulers...")
         optimizer = hydra.utils.instantiate(
             self.config.optimizer, params=self.parameters()
         )
@@ -1263,9 +1298,11 @@ class InstanceSegmentation(pl.LightningModule):
         )
         scheduler_config = {"scheduler": lr_scheduler}
         scheduler_config.update(self.config.scheduler.pytorch_lightning_params)
+        # print("Configuring optimizers and schedulers done.")
         return [optimizer], [scheduler_config]
 
     def prepare_data(self):
+        # print("Preparing data...")
         self.train_dataset = hydra.utils.instantiate(
             self.config.data.train_dataset
         )
@@ -1276,17 +1313,23 @@ class InstanceSegmentation(pl.LightningModule):
             self.config.data.test_dataset
         )
         self.labels_info = self.train_dataset.label_info
+        # print("Data prepared.")
 
     def train_dataloader(self):
+        # print("Creating train loader...")
         c_fn = hydra.utils.instantiate(self.config.data.train_collation)
-        return hydra.utils.instantiate(
+        loader =  hydra.utils.instantiate(
             self.config.data.train_dataloader,
             self.train_dataset,
             collate_fn=c_fn,
         )
+        # print("Train loader created:", len(loader))
+        return loader
 
     def val_dataloader(self):
+        # print("Creating val loader...")
         c_fn = hydra.utils.instantiate(self.config.data.validation_collation)
+        # print("Validation collation function instantiated.")
         return hydra.utils.instantiate(
             self.config.data.validation_dataloader,
             self.validation_dataset,
