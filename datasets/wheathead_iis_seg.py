@@ -36,10 +36,10 @@ class WheatheadIISDataset(Dataset):
     def __init__(
         self,
         dataset_name="wheathead_iis",
-        data_dir: Optional[Union[str, Tuple[str]]] = "data/processed/wheathead_iis",
+        data_dir: Optional[Union[str, Tuple[str]]] = "data/processed_2/wheathead_iis",
         label_db_filepath: Optional[
             str
-        ] = "data/processed/wheathead_iis/label_database.yaml",
+        ] = "data/processed_2/wheathead_iis/label_database.yaml",
         # mean std values from scannet
         color_mean_std: Optional[Union[str, Tuple[Tuple[float]]]] = (
             (0.5),

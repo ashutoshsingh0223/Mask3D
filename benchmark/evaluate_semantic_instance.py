@@ -58,29 +58,32 @@ import benchmark.util_3d as util_3d
 
 
 # ---------- Label info ---------- #
-CLASS_LABELS = [
-    "cabinet",
-    "bed",
-    "chair",
-    "sofa",
-    "table",
-    "door",
-    "window",
-    "bookshelf",
-    "picture",
-    "counter",
-    "desk",
-    "curtain",
-    "refrigerator",
-    "shower curtain",
-    "toilet",
-    "sink",
-    "bathtub",
-    "otherfurniture",
-]
-VALID_CLASS_IDS = np.array(
-    [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 24, 28, 33, 34, 36, 39]
-)
+# CLASS_LABELS = [
+#     "cabinet",
+#     "bed",
+#     "chair",
+#     "sofa",
+#     "table",
+#     "door",
+#     "window",
+#     "bookshelf",
+#     "picture",
+#     "counter",
+#     "desk",
+#     "curtain",
+#     "refrigerator",
+#     "shower curtain",
+#     "toilet",
+#     "sink",
+#     "bathtub",
+#     "otherfurniture",
+# ]
+# VALID_CLASS_IDS = np.array(
+#     [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 24, 28, 33, 34, 36, 39]
+# )
+
+CLASS_LABELS = ["stem", "leaves", "wheat-heads"]
+VALID_CLASS_IDS = np.array([1, 2, 3])
 ID_TO_LABEL = {}
 LABEL_TO_ID = {}
 for i in range(len(VALID_CLASS_IDS)):
@@ -987,7 +990,7 @@ def evaluate(
                 "Scan {} does not match any gt file".format(k), user_fault=True
             )
 
-        if dataset == "s3dis":
+        if dataset in ["s3dis", "wheathead_iis"]:
             gt_ids = util_3d.load_ids(gt_file)
             gt_sem = (gt_ids // 1000) - 1
             gt_ins = gt_ids - (gt_ids // 1000) * 1000
@@ -1076,7 +1079,7 @@ def evaluate(
                     mean_weighted_cov /= num_gt_point
                     all_mean_weighted_cov[i_sem].append(mean_weighted_cov)
 
-        if dataset == "s3dis":
+        if dataset in ["s3dis", "wheathead_iis"]:
             # instance precision & recall
             for i_sem in range(NUM_CLASSES):
                 tp = [0.0] * len(pts_in_pred[i_sem])
@@ -1120,7 +1123,7 @@ def evaluate(
     print_results(avgs)
     write_result_file(avgs, output_file)
 
-    if dataset == "s3dis":
+    if dataset in ["s3dis", "wheathead_iis"]:
         MUCov = np.zeros(NUM_CLASSES)
         MWCov = np.zeros(NUM_CLASSES)
         for i_sem in range(NUM_CLASSES):

@@ -47,7 +47,7 @@ general:
   save_dir: saved/${general.experiment_name}
   # time/commit/md5(config)_uuid
   # time/experiment_id/version_uuid
-  experiment_id: 4 # commit[:8], or unique from logger
+  experiment_id: 7 # commit[:8], or unique from logger
   version: 2 # md5[:8] of config
 
   gpus: 1

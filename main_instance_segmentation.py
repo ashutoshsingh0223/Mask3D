@@ -105,23 +105,23 @@ def train(cfg: DictConfig):
 def test(cfg: DictConfig):
     # because hydra wants to change dir for some reason
     os.chdir(hydra.utils.get_original_cwd())
-    cfg, model, loggers = get_parameters(cfg)
+    cfg, model, loggers, ckpt_path = get_parameters(cfg)
     # runner = Trainer(
     #     devices=cfg.general.gpus,
     #     logger=loggers,
     #     weights_save_path=str(cfg.general.save_dir),
     #     **cfg.trainer,
     # )
-
+    cfg.trainer.__delattr__("ckpt_path")
     runner = Trainer(
         logger=loggers,
         log_every_n_steps=3,
         devices=cfg.general.gpus,
-        callbacks=callbacks,
+        # callbacks=callbacks,
         default_root_dir=str(cfg.general.save_dir),  # Changed from weights_save_path
         **cfg.trainer,
     )
-    runner.test(model)
+    runner.test(model, ckpt_path=ckpt_path)
 
 
 @hydra.main(

@@ -253,7 +253,30 @@ class InstanceSegmentation(pl.LightningModule):
         # self.training_outputs = []
 
     def on_validation_epoch_end(self):
-        self.test_epoch_end(self.validation_outputs)
+        # self.on_test_epoch_end(self.validation_outputs)
+        if self.config.general.export:
+            return
+
+        self.eval_instance_epoch_end()
+
+        dd = defaultdict(list)
+        for output in self.validation_outputs:
+            for key, val in output.items():
+                dd[key].append(val)
+
+        dd = {k: statistics.mean(v) for k, v in dd.items()}
+
+        dd["val_mean_loss_ce"] = statistics.mean(
+            [item for item in [v for k, v in dd.items() if "loss_ce" in k]]
+        )
+        dd["val_mean_loss_mask"] = statistics.mean(
+            [item for item in [v for k, v in dd.items() if "loss_mask" in k]]
+        )
+        dd["val_mean_loss_dice"] = statistics.mean(
+            [item for item in [v for k, v in dd.items() if "loss_dice" in k]]
+        )
+
+        self.log_dict(dd)
         self.validation_outputs = []
 
     def save_visualizations(
@@ -569,7 +592,11 @@ class InstanceSegmentation(pl.LightningModule):
             return 0.0
 
     def test_step(self, batch, batch_idx):
-        return self.eval_step(batch, batch_idx)
+        output = self.eva_step(batch, batch_idx)
+        if not hasattr(self, 'test_outputs'):
+            self.test_outputs = []
+        self.test_outputs.append(output)
+        return output
 
     def get_full_res_mask(
         self, mask, inverse_map, point2segment_full, is_heatmap=False
@@ -1084,7 +1111,7 @@ class InstanceSegmentation(pl.LightningModule):
                         "pred_scores": self.preds[key]["pred_scores"],
                     }
                 mprec, mrec = evaluate(
-                    new_preds, gt_data_path, pred_path, dataset="s3dis"
+                    new_preds, gt_data_path, pred_path, dataset="wheathead_iis"
                 )
                 ap_results[f"{log_prefix}_mean_precision"] = mprec
                 ap_results[f"{log_prefix}_mean_recall"] = mrec
@@ -1259,15 +1286,15 @@ class InstanceSegmentation(pl.LightningModule):
         self.bbox_preds = dict()
         self.bbox_gt = dict()
 
-    def test_epoch_end(self, outputs):
+    def on_test_epoch_end(self):
         if self.config.general.export:
             return
 
         self.eval_instance_epoch_end()
 
         dd = defaultdict(list)
-        for output in outputs:
-            for key, val in output.items():  # .items() in Python 3.
+        for output in self.test_outputs:
+            for key, val in output.items():
                 dd[key].append(val)
 
         dd = {k: statistics.mean(v) for k, v in dd.items()}
